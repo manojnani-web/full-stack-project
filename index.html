@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Shelfmark – Online Library Management</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#eef1f6;--card:#fff;--tx:#14213d;--mut:#5d6881;--ac:#2457d6;--on:#fff;--bd:#d6dce8;--red:#b42318;--grn:#127a4b}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1524;--card:#18203a;--tx:#e6eaf5;--mut:#98a3bd;--ac:#7a9bff;--on:#0f1524;--bd:#2a3556;--red:#ff8a80;--grn:#5fd49b}}
+:root[data-theme="dark"]{--bg:#0f1524;--card:#18203a;--tx:#e6eaf5;--mut:#98a3bd;--ac:#7a9bff;--on:#0f1524;--bd:#2a3556;--red:#ff8a80;--grn:#5fd49b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+h1,h2,h3,.t{font-family:Georgia,"Times New Roman",serif}
+header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;padding:14px 20px;background:var(--tx);color:var(--bg)}
+header b{font:700 22px Georgia,serif;letter-spacing:.3px}
+header span{opacity:.8;font-size:13px}
+nav{display:flex;gap:6px;padding:12px 20px 0;overflow-x:auto}
+nav button{background:none;border:0;border-bottom:3px solid transparent;color:var(--mut);padding:8px 12px;font:600 14px inherit;cursor:pointer;white-space:nowrap}
+nav button.on{color:var(--ac);border-color:var(--ac)}
+main{padding:16px 20px 40px;max-width:1000px;margin:0 auto}
+button,input,select{font:inherit;color:inherit}
+.btn{background:var(--ac);color:var(--on);border:0;border-radius:8px;padding:7px 14px;font-weight:600;cursor:pointer}
+.btn.o{background:none;color:var(--ac);border:1.5px solid var(--ac)}
+.btn.r{background:none;color:var(--red);border:1.5px solid var(--red)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+input,select{background:var(--card);border:1.5px solid var(--bd);border-radius:8px;padding:8px 10px;min-width:0}
+input:focus,select:focus,button:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+.bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}.bar input{flex:1;min-width:180px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.bk{background:var(--card);border:1px solid var(--bd);border-left:6px solid var(--sp,var(--ac));border-radius:6px;padding:12px 14px;display:flex;flex-direction:column;gap:4px}
+.bk h3{margin:0;font-size:18px;line-height:1.25}.bk small{color:var(--mut)}
+.bk .row{margin-top:auto;padding-top:10px;display:flex;gap:8px;align-items:center;justify-content:space-between}
+.ok{color:var(--grn);font-weight:600}.no{color:var(--red);font-weight:600}
+.panel{background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:14px;margin-bottom:14px}
+.panel h2{margin:0 0 8px;font-size:19px}
+.li{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid var(--bd)}
+.li:first-of-type{border-top:0}.li>div:first-child{flex:1;min-width:180px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:14px}
+.stat{background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:12px}
+.stat b{display:block;font:700 28px Georgia,serif}.stat span{color:var(--mut);font-size:13px}
+.alert{background:var(--card);border:1.5px solid var(--red);color:var(--red);border-radius:8px;padding:10px 14px;margin-bottom:10px;font-weight:600}
+.note{background:var(--card);border:1.5px solid var(--ac);border-radius:8px;padding:10px 14px;margin-bottom:10px}
+.fm{display:grid;gap:10px;max-width:420px}.fm label{display:grid;gap:4px;font-weight:600;font-size:13px}
+.login{max-width:400px;margin:12vh auto;padding:0 20px;text-align:center}
+.login h1{font-size:38px;margin:0}.login p{color:var(--mut)}
+.login input{width:100%;margin:10px 0}.login .btn{width:100%;margin-top:8px;padding:10px}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:10px 16px;border-radius:8px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90vw}
+#toast.s{opacity:1}
+.sc{overflow-x:auto}
+</style></head><body>
+<div id="app"></div><div id="toast" role="status"></div>
+<script>
+const D=864e5,RATE=2,MAX=3,now=()=>Date.now();
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const COL={Fiction:'#c2410c',Technology:'#2457d6',History:'#7c3aed',Biography:'#0f766e','Self-help':'#be185d'};
+let S={books:[],loans:[],res:[],notes:[]};
+async function api(method,url,body){
+let r;try{r=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined})}
+catch(e){throw new Error('Cannot reach the server. Is it running?')}
+const d=await r.json().catch(()=>({}));
+if(!r.ok)throw new Error(d.error||'Something went wrong.');
+return d}
+async function load(){
+const d=await api('GET','/api/data'),T=x=>new Date(x).getTime();
+S.books=d.books.map(b=>({id:b._id,t:b.title,a:b.author,c:b.category,n:b.copies,i:'LIB-'+b.codeNo}));
+S.loans=d.loans.map(l=>({id:l._id,u:l.user,b:l.book,s:T(l.issuedAt),d:T(l.dueAt),r:l.returnedAt?T(l.returnedAt):null,rn:l.renewed}));
+S.res=d.reservations.map(r=>({b:r.book,u:r.user,t:T(r.createdAt)}));
+S.notes=d.notes.map(n=>({u:n.user,m:n.message}))}
+const run=async fn=>{try{await fn()}catch(e){toast(e.message)}};
+const go=(fn,after)=>run(async()=>{await fn();await load();after()});
+function resetData(){if(confirm('Reset all demo data?'))go(()=>api('POST','/api/reset'),draw)}
+let me=null,tab='cat',q='',cat='All';
+const act=b=>S.loans.filter(l=>l.b==b&&!l.r).length;
+const av=b=>b.n-act(b.id);
+const book=id=>S.books.find(b=>b.id==id)||{t:'(removed book)'};
+const fine=l=>{const o=Math.ceil(((l.r||now())-l.d)/D);return o>0?o*RATE:0};
+const dt=t=>new Date(t).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+const status=l=>{if(l.r)return'Returned '+dt(l.r);const k=Math.ceil((l.d-now())/D);return k<0?`<span class="no">Overdue by ${-k} day${k<-1?'s':''}</span>`:k==0?'<span class="no">Due today</span>':`${k} day${k>1?'s':''} left`};
+const mine=()=>S.loans.filter(l=>l.u==me.name&&!l.r);
+function toast(m){const t=$('#toast');t.textContent=m;t.className='s';clearTimeout(toast.h);toast.h=setTimeout(()=>t.className='',2400)}
+function login(){
+$('#app').innerHTML=`<div class="login"><h1>Shelfmark</h1><p>Online library: search, borrow, reserve and track books.</p>
+<input id="nm" placeholder="Enter your name" aria-label="Your name" maxlength="30" autofocus>
+<button class="btn" onclick="enter(false)">Sign in as member</button>
+<button class="btn o" onclick="enter(true)">Sign in as librarian</button>
+<p style="font-size:12px">Demo login: no password needed. Data is saved in MongoDB.</p></div>`}
+async function enter(admin){const n=$('#nm').value.trim();if(!admin&&!n)return toast('Enter your name to sign in as a member.');me={name:admin?'Librarian':n,admin};tab='cat';await run(load);draw()}
+function draw(){
+if(!me)return login();
+const T=me.admin?[['cat','Catalog'],['loans','Loans'],['add','Add book'],['rep','Reports']]:[['cat','Catalog'],['my','My books']];
+$('#app').innerHTML=`<header><b>Shelfmark</b><span>${esc(me.name)} · ${me.admin?'Librarian':'Member'} <button class="btn o" style="margin-left:8px;color:var(--bg);border-color:var(--bg)" onclick="me=null;draw()">Sign out</button></span></header>
+<nav>${T.map(t=>`<button class="${t[0]==tab?'on':''}" onclick="tab='${t[0]}';draw()">${t[1]}</button>`).join('')}</nav><main id="m"></main>`;
+({cat:vCat,my:vMy,loans:vLoans,add:vAdd,rep:vRep})[tab]();
+if(tab=='cat')grid()}
+function vCat(){
+const cats=['All',...new Set(S.books.map(b=>b.c))];
+$('#m').innerHTML=`<div class="bar"><input id="q" placeholder="Search by title, author or code" value="${esc(q)}" oninput="q=this.value;grid()" aria-label="Search books">
+<select onchange="cat=this.value;grid()" aria-label="Category">${cats.map(c=>`<option ${c==cat?'selected':''}>${esc(c)}</option>`).join('')}</select></div><div class="grid" id="g"></div>`}
+function grid(){
+const k=q.toLowerCase(),L=S.books.filter(b=>(cat=='All'||b.c==cat)&&(b.t+b.a+b.i).toLowerCase().includes(k));
+$('#g').innerHTML=L.length?L.map(b=>{
+const a=av(b),has=!me.admin&&S.loans.some(l=>l.b==b.id&&l.u==me.name&&!l.r),rs=S.res.some(r=>r.b==b.id&&r.u==me.name);
+let btn='';
+if(me.admin)btn=`<button class="btn r" onclick="del('${b.id}')">Remove</button>`;
+else if(has)btn='<button class="btn o" disabled>Borrowed</button>';
+else if(a>0)btn=`<button class="btn" onclick="borrow('${b.id}')">Borrow</button>`;
+else btn=`<button class="btn o" ${rs?'disabled':''} onclick="reserve('${b.id}')">${rs?'Reserved':'Reserve'}</button>`;
+return`<div class="bk" style="--sp:${COL[b.c]||'var(--ac)'}"><h3>${esc(b.t)}</h3><small>${esc(b.a)} · ${esc(b.c)}</small><small>${esc(b.i)}</small>
+<div class="row"><span class="${a?'ok':'no'}">${a?`${a} of ${b.n} available`:'All copies out'}</span>${btn}</div></div>`}).join(''):'<p>No books match your search. Try a different title or category.</p>'}
+function borrow(id){go(async()=>{const l=await api('POST','/api/loans',{user:me.name,bookId:id});toast(`Borrowed. Due ${dt(l.dueAt)}.`)},grid)}
+function reserve(id){go(async()=>{await api('POST','/api/reservations',{user:me.name,bookId:id});toast('Reserved. We will notify you when a copy is free.')},grid)}
+function ret(id){go(async()=>{const r=await api('POST',`/api/loans/${id}/return`);toast(r.fine?`Returned. Fine due: ₹${r.fine}.`:'Returned. Thank you!')},draw)}
+function renew(id){go(async()=>{await api('POST',`/api/loans/${id}/renew`);toast('Renewed for 7 more days.')},draw)}
+function del(id){go(async()=>{await api('DELETE',`/api/books/${id}`);toast('Book removed.')},grid)}
+function vMy(){
+const A=mine(),H=S.loans.filter(l=>l.u==me.name&&l.r).sort((a,b)=>b.r-a.r),N=S.notes.filter(n=>n.u==me.name);
+const od=A.filter(l=>fine(l)>0),soon=A.filter(l=>l.d>=now()&&l.d-now()<=2*D);
+$('#m').innerHTML=(od.length?`<div class="alert">Reminder: ${od.length} book${od.length>1?'s are':' is'} overdue. Fine so far: ₹${od.reduce((s,l)=>s+fine(l),0)} (₹${RATE} per day).</div>`:'')
++(soon.length?`<div class="note">Due within 2 days: ${soon.map(l=>esc(book(l.b).t)).join(', ')}.</div>`:'')
++N.map(n=>`<div class="note">${esc(n.m)}</div>`).join('')
++`<div class="panel"><h2>Currently borrowed (${A.length} of ${MAX})</h2>${A.length?A.map(l=>`<div class="li"><div><b class="t">${esc(book(l.b).t)}</b><br><small>Issued ${dt(l.s)} · Due ${dt(l.d)}</small></div><div>${status(l)}${fine(l)?` · Fine ₹${fine(l)}`:''}</div><div><button class="btn o" onclick="renew('${l.id}')">Renew</button> <button class="btn" onclick="ret('${l.id}')">Return</button></div></div>`).join(''):'<p>Nothing borrowed yet. Open the Catalog to find your next read.</p>'}</div>
+<div class="panel"><h2>Reservations</h2>${S.res.filter(r=>r.u==me.name).map(r=>`<div class="li"><div>${esc(book(r.b).t)}</div><small>Waiting since ${dt(r.t)}</small></div>`).join('')||'<p>No active reservations.</p>'}</div>
+<div class="panel"><h2>Borrowing history</h2>${H.length?H.map(l=>`<div class="li"><div>${esc(book(l.b).t)}</div><small>${dt(l.s)} to ${dt(l.r)}${fine(l)?` · Fine ₹${fine(l)}`:''}</small></div>`).join(''):'<p>No past loans yet.</p>'}</div>`}
+function vLoans(){
+const A=S.loans.filter(l=>!l.r).sort((a,b)=>a.d-b.d);
+$('#m').innerHTML=`<div class="panel"><h2>Active loans (${A.length})</h2>${A.map(l=>`<div class="li"><div><b class="t">${esc(book(l.b).t)}</b><br><small>${esc(l.u)} · Due ${dt(l.d)}</small></div><div>${status(l)}${fine(l)?` · Fine ₹${fine(l)}`:''}</div><button class="btn" onclick="ret('${l.id}')">Mark returned</button></div>`).join('')||'<p>No books are on loan.</p>'}</div>
+<div class="panel"><h2>Reservation queue</h2>${S.res.map(r=>`<div class="li"><div>${esc(book(r.b).t)}</div><small>${esc(r.u)} · since ${dt(r.t)}</small></div>`).join('')||'<p>No reservations.</p>'}</div>`}
+function vAdd(){
+$('#m').innerHTML=`<div class="panel"><h2>Add a book</h2><div class="fm">
+<label>Title<input id="at"></label><label>Author<input id="aa"></label>
+<label>Category<input id="ac" list="cl" placeholder="e.g. Fiction"></label><datalist id="cl">${Object.keys(COL).map(c=>`<option>${c}`).join('')}</datalist>
+<label>Copies<input id="an" type="number" min="1" value="1"></label>
+<button class="btn" onclick="addBook()">Save book</button></div></div>`}
+function addBook(){
+const t=$('#at').value.trim(),a=$('#aa').value.trim(),c=$('#ac').value.trim()||'General',n=Math.max(1,+$('#an').value||1);
+if(!t||!a)return toast('Enter both a title and an author.');
+run(async()=>{await api('POST','/api/books',{title:t,author:a,category:c,copies:n});await load();toast('Book added to the catalog.');tab='cat';draw()})}
+function vRep(){
+const A=S.loans.filter(l=>!l.r),O=A.filter(l=>fine(l)>0),cnt={};
+S.loans.forEach(l=>cnt[l.b]=(cnt[l.b]||0)+1);
+const top=Object.entries(cnt).sort((a,b)=>b[1]-a[1]).slice(0,5);
+const fines=S.loans.reduce((s,l)=>s+fine(l),0);
+const st=(n,l)=>`<div class="stat"><b>${n}</b><span>${l}</span></div>`;
+$('#m').innerHTML=`<div class="stats">${st(S.books.length,'Titles')}${st(S.books.reduce((s,b)=>s+b.n,0),'Total copies')}${st(A.length,'On loan')}${st(O.length,'Overdue')}${st('₹'+fines,'Fines accrued')}${st(new Set(S.loans.map(l=>l.u)).size,'Active members')}</div>
+<div class="panel"><h2>Most borrowed</h2>${top.map(([id,n])=>`<div class="li"><div>${esc(book(id).t)}</div><b>${n} loan${n>1?'s':''}</b></div>`).join('')}</div>
+<div class="panel"><h2>Overdue list</h2>${O.map(l=>`<div class="li"><div>${esc(book(l.b).t)}<br><small>${esc(l.u)}</small></div><div>${status(l)}</div><b>₹${fine(l)}</b></div>`).join('')||'<p>No overdue books.</p>'}</div>
+<button class="btn r" onclick="resetData()">Reset demo data</button>`}
+run(load).then(draw);
+</script></body></html>
